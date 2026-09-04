@@ -1,4 +1,4 @@
-# RULES — behaviour chain for the forensic-ai-harness skill pack
+# RULES — behaviour chain for the forensic-skill skill pack
 
 Addressed to any AI coding/agent client that loads this repository (Claude Code, Cursor, Cline,
 OpenCode, Codex CLI, Windsurf, Kiro, or others). These rules bind before any skill body.

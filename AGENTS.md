@@ -1,4 +1,4 @@
-# forensic-ai-harness — agent entry
+# forensic-skill — agent entry
 
 A client-neutral **agent skill pack for digital-forensics CTFs and authorized DFIR**. Any agent client
 (Claude Code, Cursor, Cline, OpenCode, Codex CLI, Windsurf, Kiro, …) loads this repo through its own
