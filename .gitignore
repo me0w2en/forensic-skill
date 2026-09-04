@@ -1,0 +1,13 @@
+# machine-specific, regenerate with scripts/refresh-tool-index.sh
+tool-index.md
+tool-index.json
+# local case work (evidence copies, notes) — never commit
+work/
+# OS / editor
+.DS_Store
+._*
+__pycache__/
+*.pyc
+
+# distilled competition writeups — local-only, NOT redistributed (derivative of others' writeups)
+knowledge/kdfc-*.md

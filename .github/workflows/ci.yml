@@ -1,0 +1,46 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: routing.json is valid + routing table sync
+        run: python3 -c "import json;json.load(open('config/routing.json'));print('routing.json OK')"
+      - name: routing regression
+        run: bash scripts/test-routing.sh
+      - name: SKILL.md frontmatter + size
+        run: |
+          fail=0
+          for f in skills/*/SKILL.md; do
+            dir=$(basename "$(dirname "$f")")
+            nm=$(awk -F': ' '/^name:/{print $2; exit}' "$f")
+            lines=$(wc -l < "$f")
+            [ "$(head -1 "$f")" = "---" ] || { echo "::error::$f missing frontmatter"; fail=1; }
+            [ "$nm" = "$dir" ] || { echo "::error::$f name '$nm' != dir '$dir'"; fail=1; }
+            grep -q '^description:' "$f" || { echo "::error::$f no description"; fail=1; }
+            [ "$lines" -lt 500 ] || { echo "::error::$f too long ($lines)"; fail=1; }
+          done
+          exit $fail
+      - name: every route target skill exists
+        run: |
+          python3 - <<'PY'
+          import json,os,sys
+          cfg=json.load(open('config/routing.json')); bad=0
+          for rid,r in cfg['routes'].items():
+              p=os.path.join('skills',r['skill'])
+              if not os.path.isfile(p): print(f"::error::route {rid} -> missing {p}"); bad=1
+          for rid in cfg['priority']:
+              if rid not in cfg['routes']: print(f"::error::priority {rid} not in routes"); bad=1
+          sys.exit(bad)
+          PY
+      - name: shell scripts parse
+        run: for s in scripts/*.sh; do bash -n "$s" || exit 1; done
+      - name: identify.sh smoke test
+        run: |
+          printf '\x89PNG\r\n\x1a\n' > /tmp/t.png
+          bash scripts/identify.sh /tmp/t.png | grep -q 'ROUTE'

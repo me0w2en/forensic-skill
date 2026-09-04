@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "1.0",
+  "meta": {
+    "description": "Single source of truth for artifact/task -> skill routing. scripts/route.sh reads this; the table in skills/forensics-router/SKILL.md must agree (scripts/test-routing.sh checks).",
+    "fallbackId": "R0",
+    "scoring": "For every keyword rule whose `mustAll` all match and `exclude` does not, the route scores `weight` (default 1) per DISTINCT string matched by `must`. Rules that identify the ARTIFACT TYPE (extension, `file -b` signature, well-known artifact filename) carry weight 2 so they beat topic words. Highest score wins; ties broken by position in `priority`; no match -> fallbackId. Matching is case-insensitive over: request text + `file -b` output + filename(s).",
+    "notes": [
+      "Routes are about the ARTIFACT you were handed, not about the question. A question about 'when was X run' on a disk image is disk-image first, then windows-artifacts.",
+      "Several skills often apply to one case (disk-image -> windows-artifacts -> anti-forensics-timeline). PRIMARY is where you start; SECONDARY candidates are listed by route.sh."
+    ]
+  },
+  "routes": {
+    "R0": {
+      "label": "Fallback: file-format triage & carving",
+      "skill": "file-format-carving/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\bdata\\b|corrupt|won.?t (open|play)|broken header|unknown|polyglot|composite document file|microsoft ooxml|pdf document|zip archive|rar archive|7-zip|gzip compressed|xz compressed|hwp|\\.docx?\\b|\\.xlsx?\\b|\\.pptx?\\b|\\.pdf\\b|pe32\\+?|\\.exe\\b|\\.dll\\b|rich header|pdb path",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\bdata\\b|unknown|corrupt|won.?t (open|play)|broken header|magic|carv|foremost|binwalk|bulk_extractor|scalpel|photorec|zip|rar|7z|gzip|ooxml|docx|xlsx|pptx|hwp|pdf|polyglot|crc|chunk",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R1": {
+      "label": "Disk image / filesystem",
+      "skill": "disk-image/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.e01\\b|\\.ex01\\b|\\bewf\\b|expert witness|\\.dd\\b|\\.raw\\b|\\.img\\b|\\.001\\b|\\.vmdk\\b|\\.vhdx?\\b|\\.qcow2\\b|\\.ad1\\b|\\.aff\\b|dos/mbr boot sector|gpt partition|ntfs|exfat|fat(12|16|32)|ext[234]|apfs|hfs\\+?|\\brefs\\b|luks|bitlocker",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\.e01\\b|\\.ex01\\b|ewf|expert witness|\\.dd\\b|\\.raw\\b|\\.img\\b|\\.001\\b|vmdk|vhdx?|qcow2|\\.ad1\\b|\\.aff\\b|disk image|partition|mbr|gpt|boot sector|ntfs|fat(12|16|32)|exfat|ext[234]|xfs|btrfs|apfs|hfs\\+?|refs|mmls|fls|icat|istat|tsk_recover|sleuth ?kit|autopsy|ftk|x-ways|deleted (file|partition)|unallocated|slack|\\$mft|\\$usnjrnl|\\$logfile|\\$i30|luks|bitlocker|filevault|veracrypt|dm-crypt",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R2": {
+      "label": "Memory forensics",
+      "skill": "memory-forensics/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.mem\\b|\\.vmem\\b|\\.vmss\\b|\\.vmsn\\b|\\.lime\\b|\\.dmp\\b|memdump|mem(ory)?.?dump|ram.?(dump|image|capture)|hiberfil|pagefile|swapfile|crash dump|core dump|\\bcore\\.\\d+|elf 64-bit lsb core|process memory|in.?memory",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\.mem\\b|\\.vmem\\b|\\.vmss\\b|\\.vmsn\\b|\\.lime\\b|\\.dmp\\b|\\.raw\\b.*mem|memdump|mem(ory)? ?dump|ram.?(dump|image|capture)|hiberfil|pagefile|swapfile|crash dump|volatility|\\bvol\\b|\\bvol3\\b|volshell|lime|avml|winpmem|dumpit|aeskeyfind|rsakeyfind|bulk.?extractor.*mem|core dump|\\bcore\\.\\d+|memfd|pages-\\d+\\.img|pagemap",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R3": {
+      "label": "Network / pcap",
+      "skill": "network-forensics/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.pcapng?\\b|\\.cap\\b|\\bpcap\\b|pcap capture|pcapng capture|tcpdump capture|usbpcap|\\.etl\\b|netlog",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\.pcapng?\\b|\\.cap\\b|pcap|tcpdump|wireshark|tshark|capinfos|tcpflow|zeek|bro log|netflow|vpc flow|follow (tcp|http) stream|export objects|usb ?hid|usbpcap|bluetooth|btatt|\\bble\\b|hci|a2dp|rtp|sip|voip|dns (exfil|tunnel)|icmp (exfil|tunnel)|tls key|sslkeylog|http/2|websocket|smb2?\\b.*pcap|ftp-data|\\betl\\b|netlog",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R4": {
+      "label": "Windows artifacts (registry, event logs, execution, user activity)",
+      "skill": "windows-artifacts/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.evtx?\\b|ms windows vista event log|sysmon|\\bntuser\\.dat\\b|usrclass\\.dat|amcache\\.hve|\\bsam\\b|\\.pf\\b|\\.lnk\\b|ms windows shortcut|automaticdestinations|customdestinations|srudb\\.dat|activitiescache\\.db|pcaapplaunchdic|\\$mft\\b|\\$usnjrnl|\\$logfile|\\$i30|\\$recycle\\.bin|windows registry file",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\.evtx?\\b|event ?log|sysmon|event ?id ?\\d{3,4}|\\b(4624|4625|4648|4688|4698|4720|4732|7045|1102|104|4103|4104)\\b|registry|\\bhives?\\b|ntuser|usrclass|\\bsam\\b|\\bsystem\\b hive|software hive|security hive|amcache|shimcache|appcompatcache|\\bbam\\b|\\bdam\\b|userassist|shellbags?|jump ?lists?|automaticdestinations|lnk\\b|shortcut|prefetch|\\.pf\\b|srum|srudb|activitiescache|windows timeline|pcaapplaunchdic|recycle ?bin|\\$i\\d|\\$r\\d|wer\\b|powershell (transcript|history)|consolehost_history|scheduled task|taskcache|services\\b.*(csv|key)|\\bwmi\\b|mft.?csv|regripper|rip\\.pl|regipy|chainsaw|hayabusa|evtx_dump|mftecmd|pecmd|lecmd|jlecmd|sbecmd|amcacheparser|appcompatcacheparser|srumecmd|timeline explorer|eric zimmerman|\\bez ?tools?",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R5": {
+      "label": "Linux / container / cloud",
+      "skill": "linux-container-cloud/SKILL.md",
+      "keywords": [
+        {
+          "must": "cloudtrail|guardduty|route ?53|s3 access log|vpc.?flow|layer\\.tar|docker (save|export)|\\.wh\\.|criu|checkpoint|pstree\\.img|spec\\.dump|config\\.dump|rootfs-diff|containerd|kubernetes|k8s|journald|\\.journal\\b|auth\\.log|wtmp|btmp|bash_history|posix tar archive",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "docker|\\boci\\b|container|layer\\.tar|manifest\\.json|whiteout|\\.wh\\.|docker (save|export)|kubernetes|k8s|\\bpod\\b|kubelet|containerd|\\bcri\\b|crit\\b|criu|cloudtrail|guardduty|route ?53|s3 access log|vpc flow|\\baws\\b|\\biam\\b|accesskeyid|akia[0-9a-z]{12,}|assumerole|\\bgcp\\b|azure|entra|m365|unified audit|google (workspace|takeout|vault)|journald|\\.journal\\b|systemd|auth\\.log|secure\\b.*log|syslog|wtmp|btmp|lastlog|utmp|bash_history|zsh_history|\\.ssh/|authorized_keys|cron(tab)?|/etc/passwd|/etc/shadow|\\belf\\b.*(linux|stripped)|systemd-timer|apache|nginx|access\\.log|iptables|auditd",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R6": {
+      "label": "Mobile / app / browser artifacts",
+      "skill": "mobile-artifacts/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\bandroid\\b|\\bios\\b|iphone|ipad|\\.apk\\b|\\.ab\\b|android backup|manifest\\.db|\\.plist\\b|apple binary property list|shared_prefs|/data/data|/data/user|userdata\\.img|\\.db-wal\\b|\\.db-shm\\b|sqlite 3\\.x database|leveldb|conversations\\.db|external\\.db|clipitem\\.db|places\\.sqlite|\\bhistory\\b.*sqlite|login data|web data|cookies\\b|knowledgec|sms\\.db|chat\\.db",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "android|\\bapk\\b|\\bios\\b|iphone|ipad|itunes backup|manifest\\.db|\\.plist\\b|bplist|knowledgec|sms\\.db|chat\\.db|aleapp|ileapp|\\bufed\\b|cellebrite|axiom|shared_prefs|/data/data|/data/user|userdata\\.img|\\bfbe\\b|file-based encryption|mediastore|external\\.db|sqlite|\\.db-wal|\\.db-shm|\\.db3?\\b|leveldb|indexeddb|session ?storage|local ?storage|chrom(e|ium) (history|cache|cookies|login data|web data)|firefox|places\\.sqlite|samsung internet|sbrowser|kakao|kakaotalk|line\\b.*chat|telegram|whatsapp|signal|discord|instagram|honeyboard|clipitem|chatgpt|conversations\\.db|claude.*cache|firefly|hindsight|mhtml|ccl_chromium|wpa_supplicant|wificonfigstore|semconfigurations",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R7": {
+      "label": "Multimedia & steganography",
+      "skill": "multimedia-stego/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.(png|jpe?g|gif|bmp|webp|tiff?|heic|wav|mp3|flac|ogg|mp4|m4a|mov|avi|mkv|3gp|aac)\\b|png image data|jpeg image data|gif image data|riff \\(little-endian\\) data|wave audio|iso media|matroska|mpeg adts|audio file|\\bmdat\\b|\\bmoov\\b|\\bftyp\\b|fourcc|dashcam|\\bdvr\\b|\\bavi\\b|\\briff\\b|\\bwav\\b|\\bmp4\\b|\\bpng\\b|\\bjpe?g\\b",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\.(png|jpe?g|gif|bmp|webp|tiff?|heic|wav|mp3|flac|ogg|mp4|m4a|mov|avi|mkv|3gp|aac)\\b|png image|jpeg image|riff|wave|iso media|matroska|steg|stegano|lsb|zsteg|steghide|stegseek|stegsolve|outguess|openstego|exif|exiftool|metadata|spectrogram|sonic visuali|audacity|sox\\b|dtmf|morse|sstv|qr ?code|barcode|image (compar|diff)|ela\\b|error level|frame|ffmpeg|ffprobe|h\\.?264|nal unit|mdat|moov|ftyp|movi\\b|fourcc|dashcam|dvr|cctv|360|equirect|ocr|tesseract|deepfake|fake voice|ai.?generated|what3words|geoloc|gps",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R8": {
+      "label": "Anti-forensics & timeline",
+      "skill": "anti-forensics-timeline/SKILL.md",
+      "keywords": [
+        {
+          "must": "timestomp|timestamp (tamper|manipul|anomal)|\\bsi\\b.{0,10}\\bfn\\b|\\$standard_information|\\$file_name|macb|mactime|super ?timeline|plaso|log2timeline|psort|timesketch|wiper|wiped|shredd|sdelete|ccleaner|bleachbit|anti.?forensic|log clear|wevtutil cl|1102\\b|usn.?journal|\\$j\\b|volume shadow|vss|clock (change|skew)|timezone (confus|convert)|utc\\+?9|kst\\b|filetime|100.?ns|webkit time|chrome epoch|cocoa time|unix epoch|dcode"
+        }
+      ]
+    },
+    "R9": {
+      "label": "Blockchain / crypto-asset tracing",
+      "skill": "blockchain-forensics/SKILL.md",
+      "keywords": [
+        {
+          "must": "0x[0-9a-f]{40}|\\bbc1[a-z0-9]{25,}\\b|\\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\\b|\\bT[A-Za-z1-9]{33}\\b|mnemonic|seed phrase|bip ?39|bip ?44|sepolia|\\btron\\b|\\bnile\\b|etherscan|tronscan|blockscout|\\.kdbx\\b|exodus\\.wallet|wallet\\.dat",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "blockchain|bitcoin|\\bbtc\\b|ethereum|\\beth\\b|sepolia|\\btron\\b|\\btrx\\b|nile|usdt|trc-?20|erc-?20|wallet|seed phrase|mnemonic|bip ?39|bip ?44|derivation path|exodus|metamask|ledger\\b|etherscan|tronscan|blockscout|json.?rpc|eth_call|debug_trace|selector|solc|bytecode|proxy|upgradeto|delegatecall|rug ?pull|honeypot|multisig|permission ?update|monero|xmr|xmrig|stratum|mining pool|c3pool|supportxmr|0x[0-9a-f]{40}|bc1[a-z0-9]{25,}|\\bT[A-Za-z1-9]{33}\\b",
+          "note": "topic words (weight 1)"
+        }
+      ]
+    },
+    "R10": {
+      "label": "Case operations (init, evidence log, report)",
+      "skill": "case-ops/SKILL.md",
+      "keywords": [
+        {
+          "must": "case.?init|new case|start (a )?case|scope\\.md|evidence (log|chain|graph)|chain of custody|write.?up|report|summari[sz]e (the )?case|what did we find|review case|hash verif|md5 check|sha256 check"
+        }
+      ]
+    }
+  },
+  "priority": [
+    "R2",
+    "R9",
+    "R5",
+    "R4",
+    "R3",
+    "R6",
+    "R7",
+    "R1",
+    "R8",
+    "R10",
+    "R0"
+  ]
+}
