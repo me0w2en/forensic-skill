@@ -23,6 +23,8 @@ you start a case** — most challenge shapes have a precedent here.
   andreafortuna, 0xdf, inversecos, Volatility/Plaso/SQLite docs, Aperi'Solve, Trail of Bits.
 - **journal.md** — your own case write-backs (append after every case via case-ops).
 
+- **journal.md** now includes the KDFS-2023 end-to-end test (see `email-clients` skill, added from that gap).
+
 ## Cross-cutting meta-heuristics (from all four)
 1. **Verify hashes first**, work on copies, originals read-only.
 2. **Timezone per problem** — KDFC toggles UTC±9; read the prompt every time.

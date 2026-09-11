@@ -2,9 +2,11 @@
 # case-init.sh — scaffold work/<case>/ with scope, timeline, evidence log; copy + hash artifacts.
 #   scripts/case-init.sh <case-name> [artifact ...]
 #   scripts/case-init.sh kdfc26-151 ~/Downloads/DFC2026_Lf.zip
+#   scripts/case-init.sh --link kdfs23 /Volumes/ext/2023.E01   # symlink, don't copy (large disk/mem images)
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-[ $# -ge 1 ] || { echo "usage: $0 <case-name> [artifact ...]"; exit 1; }
+LINK=0; [ "${1:-}" = "--link" ] && { LINK=1; shift; }
+[ $# -ge 1 ] || { echo "usage: $0 [--link] <case-name> [artifact ...]"; exit 1; }
 NAME="$1"; shift
 CASE="$ROOT/work/$(date +%Y%m%d)-$NAME"
 mkdir -p "$CASE"/{evidence,extracted,notes,report}
@@ -17,6 +19,21 @@ ART_BLOCK=""
 for a in "$@"; do
   [ -e "$a" ] || { echo "!! not found: $a"; continue; }
   b=$(basename "$a")
+  asize=$(stat -Lf%z "$a" 2>/dev/null || stat -Lc%s "$a" 2>/dev/null || echo 0)
+  # auto-link very large images even without --link, so we never copy 20GB+
+  if [ "$LINK" = 1 ] || [ "$asize" -gt 2147483648 ]; then
+    ln -sf "$(cd "$(dirname "$a")" && pwd)/$b" "$CASE/evidence/$b"
+    ART_BLOCK="$ART_BLOCK
+- path: $(cd "$(dirname "$a")" && pwd)/$b
+  working_copy: evidence/$b   # SYMLINK (read-only analysis; large image not copied)
+  size: $asize
+  md5: {large image — use ewfinfo (E01) or hash out-of-band}
+  sha256: {large image — hash out-of-band}
+  provided_hash: {paste from challenge}
+  verified: {true|false}"
+    echo "linked (not copied): $b ($asize bytes)"
+    continue
+  fi
   cp -Rp "$a" "$CASE/evidence/$b"
   chmod -R a-w "$CASE/evidence/$b" 2>/dev/null || true
   if [ -f "$CASE/evidence/$b" ]; then

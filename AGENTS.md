@@ -10,7 +10,7 @@ mechanism; the routing core, scripts, ops templates, and knowledge base do not d
 
 ## What this is
 Given a forensic artifact and a question, the router identifies the artifact type, enforces
-hash-verification / read-only handling / timezone capture, and dispatches to one of 12 skills:
+hash-verification / read-only handling / timezone capture, and dispatches to one of 13 skills:
 
 | Skill | Handles |
 |-------|---------|
@@ -22,6 +22,7 @@ hash-verification / read-only handling / timezone capture, and dispatches to one
 | `windows-artifacts` | EVTX/registry/Prefetch/Amcache/SRUM/$MFT execution & persistence |
 | `linux-container-cloud` | Docker/OCI, K8s/CRIU, AWS/Workspace logs, Linux logs |
 | `mobile-artifacts` | Android/iOS, app SQLite+WAL, browser & AI-app caches |
+| `email-clients` | Outlook OST/PST, Thunderbird mbox, EML/MSG mail stores |
 | `multimedia-stego` | image/audio/video stego, container repair, OCR, geolocation |
 | `file-format-carving` | unknown/corrupt files, archives, docs, PE-in-disguise (fallback) |
 | `anti-forensics-timeline` | super-timeline, timestomping, wipers, log clearing, epochs |

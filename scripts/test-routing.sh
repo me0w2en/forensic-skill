@@ -48,6 +48,9 @@ R8|convert this 100ns FILETIME tick value 130000000000000000 to KST
 R9|recover TRON wallet from leaked mnemonic on nile testnet, why can't withdraw usdt
 R9|Sepolia upgradeable proxy upgradeTo rug pull, which selector drains funds
 R9|trace the ETH from 0x0000000000000000000000000000000000001234 on etherscan
+R11|outlook.ost from AppData Local Microsoft Outlook, find the ransom email
+R11|readpst the suspect.pst and list sender recipient of every extortion mail
+R11|recover deleted emails from the pst mailbox
 R10|start a new case for kdfc 2026 problem 151
 R10|write up the report and review the evidence chain
 R0|final-final-problem.img is just 'data' according to file, avi chunks with wrong sizes

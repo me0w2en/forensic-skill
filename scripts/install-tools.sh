@@ -11,14 +11,14 @@ mkdir -p "$HOME/.local/bin"
 echo "== system packages ($OS) =="
 if [ "$OS" = "Darwin" ]; then
   have brew || { echo "install Homebrew first: https://brew.sh"; exit 1; }
-  for f in sleuthkit libewf binwalk foremost bulk_extractor testdisk yara pngcheck qpdf poppler exiftool exiv2 imagemagick ffmpeg sox ent john-jumbo hashcat chainsaw evtx dissect tcpflow ngrep zeek qemu p7zip jq ripgrep uv python@3.12 libmagic sqlite pandoc; do
+  for f in sleuthkit libewf binwalk foremost bulk_extractor testdisk yara pngcheck qpdf poppler exiftool exiv2 imagemagick ffmpeg sox ent john-jumbo hashcat chainsaw evtx dissect tcpflow ngrep zeek qemu p7zip jq ripgrep uv python@3.12 libmagic sqlite pandoc libpst; do
     brew list "$f" >/dev/null 2>&1 && { ok "$f (present)"; continue; }
     brew install "$f" >/dev/null 2>&1 && ok "$f" || ko "$f"
   done
   brew list --cask wireshark >/dev/null 2>&1 || brew install --cask wireshark >/dev/null 2>&1 && ok wireshark || ko wireshark
 elif have apt-get; then
   sudo apt-get update -qq
-  for f in sleuthkit libewf-tools ewf-tools binwalk foremost scalpel bulk-extractor testdisk yara pngcheck qpdf poppler-utils libimage-exiftool-perl exiv2 imagemagick ffmpeg sox ent john hashcat tshark tcpflow ngrep p7zip-full jq ripgrep python3-pip python3-venv steghide outguess sqlite3 pandoc cryptsetup qemu-utils; do
+  for f in sleuthkit libewf-tools ewf-tools binwalk foremost scalpel bulk-extractor testdisk yara pngcheck qpdf poppler-utils libimage-exiftool-perl exiv2 imagemagick ffmpeg sox ent john hashcat tshark tcpflow ngrep p7zip-full jq ripgrep python3-pip python3-venv steghide outguess sqlite3 pandoc cryptsetup qemu-utils pst-utils libpff-tools; do
     sudo apt-get install -y -qq "$f" >/dev/null 2>&1 && ok "$f" || ko "$f"
   done
   have cargo && { cargo install evtx >/dev/null 2>&1 && ok evtx_dump || ko evtx_dump; }
@@ -28,9 +28,10 @@ fi
 
 echo "== python tools (uv tool) =="
 have uv || pip3 install --user uv >/dev/null 2>&1
-for t in volatility3 oletools regipy pyhindsight dissect; do
+for t in volatility3 oletools pyhindsight dissect; do
   uv tool install "$t" >/dev/null 2>&1 && ok "$t" || ko "$t"
 done
+uv tool install --with click --with tabulate --with attrs regipy >/dev/null 2>&1 && ok "regipy (+click/tabulate)" || ko regipy
 uv tool install --python 3.12 plaso >/dev/null 2>&1 && ok plaso || ko "plaso (needs py3.12)"
 
 echo "== Didier Stevens suite =="
@@ -60,6 +61,7 @@ cat <<'EOF'
   - StegSolve: java -jar stegsolve.jar  (https://github.com/eugenekolo/sec-tools)
   - aeskeyfind / rsakeyfind: git clone https://github.com/makomk/aeskeyfind && make  (Linux; on mac use docker or `brew install aeskeyfind` if available)
   - Autopsy / FTK Imager / X-Ways / Magnet AXIOM: GUI, Windows-centric — optional
+  - libpff (pffexport/pffinfo for OST+PST): not in brew on mac — build github.com/libyal/libpff, or `uv run --with libpff-python python3 ...` for pypff
   - ext4-fbe Sleuth Kit fork + fbekeyfind: faui1-gitlab.cs.fau.de/tobias.gross/sleuthkit-ext4-fbe (Android FBE only)
 EOF
 echo; echo "now run: scripts/refresh-tool-index.sh"

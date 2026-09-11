@@ -64,6 +64,21 @@ Check the derived address on the right network (KDFC #152: a Nile *testnet* hone
 - **KeePass** `.kdbx` (KDFC #252): master key partially leaks from RAM via CVE-2023-32784 (first char and
   some of the second are missing) — combine with a wordlist to brute the missing leading char.
 - `wallet.dat` (Bitcoin Core) → `bitcoin2john` → john/hashcat.
+- **Ledger Live** (hardware-wallet manager): usage + on-chain history in
+  `Users\<u>\AppData\Roaming\Ledger Live\app.json` — grep addresses (`bc1q…`, `0x…`) and the `transactions`
+  array (inputs/outputs, values, block height, tx hash); `"preferredDeviceModel"` tells which device
+  (`nanoSP`, `nanoX`, `nanoS`). Device connection also shows in USBSTOR (hand to `windows-artifacts`).
+- **Blockstream Green**: `Users\<u>\AppData\Roaming\Blockstream\Green` (or the app's data dir) — cache/db
+  holds watch-only xpubs, addresses, and tx history; the install shows in Uninstall registry.
+- **MetaMask** (browser extension, not a desktop app): Chrome/Edge profile
+  `Default\Local Extension Settings\nkbihfbeogaeaoehlefnkodbefgpgknn\` (LevelDB) holds the encrypted vault
+  (`data`,`iv`,`salt`); accounts/addresses are visible, the seed is AES-GCM encrypted under the password
+  (crack via `@metamask/mnemonic` tooling / a password from memory). Parse the LevelDB with the CCL reader
+  (see `mobile-artifacts`).
+- **Electrum**: `AppData\Roaming\Electrum\wallets\*` (JSON; may be password-encrypted). Trezor Suite,
+  Atomic, Coinbase Wallet each keep an app data dir under `AppData\Roaming` — enumerate it first.
+Cross-link: extract these from the image with `disk-image` (icat) and read encrypted vaults with
+`memory-forensics` (password) before tracing on-chain.
 
 ### Phase 3 — Trace funds
 ```bash

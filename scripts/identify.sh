@@ -46,7 +46,8 @@ inspect_file() {
   local f="$1"
   [ -r "$f" ] || { echo "!! unreadable: $f"; return; }
   local size desc hex name lower_desc lower_name
-  size=$(stat -f%z "$f" 2>/dev/null || stat -c%s "$f")
+  # -L: follow symlinks so a linked-in large image reports its real size
+  size=$(stat -Lf%z "$f" 2>/dev/null || stat -Lc%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || stat -c%s "$f")
   desc=$(file -b "$f" 2>/dev/null)
   hex=$(head -c 16 "$f" | xxd -p | tr -d '\n')
   name=$(basename "$f")
@@ -60,8 +61,15 @@ inspect_file() {
   echo "MAGIC  : $hex"
   echo "TAIL   : $(tail -c 16 "$f" | xxd -p | tr -d '\n')"
   echo "ENTROPY: $(entropy "$f")"
-  if have md5sum; then echo "MD5    : $(md5sum "$f" | cut -d' ' -f1)"; else echo "MD5    : $(md5 -q "$f")"; fi
-  echo "SHA256 : $(shasum -a 256 "$f" | cut -d' ' -f1)"
+  # Hashing a multi-GB disk/memory image is slow; skip by default over 2 GiB.
+  # For EWF/E01 use the stored acquisition hash (ewfinfo); otherwise hash in the background yourself.
+  if [ "$size" -gt 2147483648 ]; then
+    echo "MD5    : (skipped, ${size} bytes > 2GiB — run 'shasum'/'ewfinfo' out-of-band)"
+    echo "SHA256 : (skipped for large image)"
+  else
+    if have md5sum; then echo "MD5    : $(md5sum "$f" | cut -d' ' -f1)"; else echo "MD5    : $(md5 -q "$f")"; fi
+    echo "SHA256 : $(shasum -a 256 "$f" | cut -d' ' -f1)"
+  fi
   echo "ROUTE  : $(route_for "$lower_desc" "$lower_name" "$hex")"
 
   # Cheap secondary signals that frequently decide a CTF

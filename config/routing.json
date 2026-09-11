@@ -162,6 +162,21 @@
           "must": "case.?init|new case|start (a )?case|scope\\.md|evidence (log|chain|graph)|chain of custody|write.?up|report|summari[sz]e (the )?case|what did we find|review case|hash verif|md5 check|sha256 check"
         }
       ]
+    },
+    "R11": {
+      "label": "Email client / mailbox (OST/PST/mbox/EML)",
+      "skill": "email-clients/SKILL.md",
+      "keywords": [
+        {
+          "must": "\\.ost\\b|\\.pst\\b|\\.mbox\\b|\\.eml\\b|\\.msg\\b|outlook data file|personal storage table|microsoft outlook|thunderbird|mbox archive",
+          "weight": 2,
+          "note": "artifact-type signals (weight 2)"
+        },
+        {
+          "must": "\\bemail\\b|e-mail|\\bmail\\b|이메일|메일|outlook|\\bost\\b|\\bpst\\b|mbox|thunderbird|readpst|pffexport|pffinfo|pypff|libpff|libpst|extract_msg|mapi|attachment|첨부파일|수신자|발신자|extortion|ransom mail|협박메일|채무상환",
+          "note": "topic words (weight 1)"
+        }
+      ]
     }
   },
   "priority": [
@@ -171,6 +186,7 @@
     "R4",
     "R3",
     "R6",
+    "R11",
     "R7",
     "R1",
     "R8",

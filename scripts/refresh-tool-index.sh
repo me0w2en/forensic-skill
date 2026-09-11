@@ -58,6 +58,9 @@ psort|timeline|psort --version|uv tool install plaso
 mactime|timeline|mactime -V|sleuthkit
 hindsight.py|browser|hindsight.py -h|uv tool install pyhindsight
 sqlite3|browser|sqlite3 --version|brew install sqlite
+readpst|email|readpst -V|brew install libpst
+pffexport|email|pffexport -h|libpff (build from source / docker)
+pffinfo|email|pffinfo -h|libpff (build from source / docker)
 exiftool|media|exiftool -ver|brew install exiftool
 exiv2|media|exiv2 --version|brew install exiv2
 ffmpeg|media|ffmpeg -version|brew install ffmpeg
@@ -103,19 +106,27 @@ EOF
   echo
   echo "Agents: consult this before choosing a command. ✅ = available, ❌ = missing (use the install hint or the fallback listed in the skill)."
   echo
+  echo "Status: ✅ runs · ⚠️ present but broken (probe errored — often a missing Python dep) · ❌ missing."
+  echo
   echo "| Tool | Category | Status | Path | Install hint |"
   echo "|------|----------|--------|------|--------------|"
-  ok=0; miss=0
+  ok=0; miss=0; broken=0
   while IFS='|' read -r name cat probe hint; do
     [ -z "$name" ] && continue
     if p=$(command -v "$name" 2>/dev/null); then
-      echo "| \`$name\` | $cat | ✅ | \`$p\` | $hint |"; ok=$((ok+1))
+      # actually RUN the probe (bounded) — catches "installed but broken" (e.g. missing click/tabulate)
+      out=$( { eval "timeout 15 $probe"; } 2>&1 </dev/null )
+      if printf '%s' "$out" | grep -qiE 'Traceback|ModuleNotFoundError|ImportError|No module named'; then
+        echo "| \`$name\` | $cat | ⚠️ | \`$p\` | $hint |"; broken=$((broken+1))
+      else
+        echo "| \`$name\` | $cat | ✅ | \`$p\` | $hint |"; ok=$((ok+1))
+      fi
     else
       echo "| \`$name\` | $cat | ❌ | — | $hint |"; miss=$((miss+1))
     fi
   done <<< "$TOOLS"
   echo
-  echo "**Available: $ok · Missing: $miss**"
+  echo "**Runs: $ok · Broken: $broken · Missing: $miss**"
   echo
   echo "## Python modules"
   echo

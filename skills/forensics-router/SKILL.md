@@ -39,6 +39,7 @@ below **in order**, then open exactly one specialist skill and follow it.
 | R7 | PNG/JPG/GIF/WAV/MP3/MP4/AVI, dashcam/DVR dumps, 360 video, "won't play" media | `multimedia-stego/` | hidden data (LSB/append/chunks), repair container, tamper localisation, OCR/what3words, music ID |
 | R8 | A timeline question, suspected timestomping/wiping/log clearing, timestamp conversion | `anti-forensics-timeline/` | SI vs FN, super-timeline, wiper traces, FILETIME/WebKit/Unix conversions, UTC↔KST |
 | R9 | Wallet apps, mnemonics, addresses/tx hashes, smart-contract or DeFi incident, mining pool IOCs | `blockchain-forensics/` | derive wallet, trace funds, multisig/permission abuse, proxy upgrade drain, attacker cluster |
+| R11 | Outlook OST/PST, Thunderbird mbox, loose EML/MSG mail stores | `email-clients/` | who emailed whom, ransom/extortion mail, a suspect email account |
 | R10 | "start a case", "write the report", "review evidence" | `case-ops/` | scaffolding, E/F/A chain review, report generation, knowledge write-back |
 | R0 | Anything `file` calls "data", corrupted headers, archives, OOXML/HWP/PDF, PE-in-disguise, polyglots | `file-format-carving/` | fix header, carve embedded files, declared-vs-actual sizes, Rich header/PDB, macro/OLE, zip crypto |
 
