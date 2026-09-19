@@ -41,7 +41,7 @@ description: |
 - `yara` (malware) — `vol ... windows.vadyarascan --yara-file r.yar` / `linux.vmayarascan`; standalone `yara r.yar dump`.
 - **`aeskeyfind`** — MISSING on this host. Recovers AES key schedules from a RAM image (LUKS volume key, FBE material). Build: `git clone https://github.com/makomk/aeskeyfind && cd aeskeyfind && make` (needs a Linux/WSL/Docker box; `docker run --rm -v "$PWD":/d -w /d ubuntu bash -lc 'apt update && apt install -y build-essential libssl-dev && make'`).
 - **`fbekeyfind`** — MISSING. Android FBE master-key finder (FAU "One Key to Rule Them All"): `curl -O https://faui1-files.cs.fau.de/public/one_key_to_rule/fbekeyfind.tar.gz` then build (Linux). Pair with the **ext4-fbe TSK fork** (`faui1-gitlab.cs.fau.de/tobias.gross/sleuthkit-ext4-fbe`).
-- **`dwarf2json`** — MISSING. Builds Volatility 3 Linux ISF symbols from a `vmlinux`+dbgsym: `git clone github.com/volatilityfoundation/dwarf2json` (Go). Alternative: pre-built JSON from the `volatilityfoundation/volatility3-symbols` repo.
+- **`dwarf2json`** — MISSING. Builds Volatility 3 Linux ISF symbols from a `vmlinux`+dbgsym: `git clone github.com/volatilityfoundation/dwarf2json && cd dwarf2json && go build` (Go toolchain only, no network needed at build time). Alternative: pre-built JSON from the `volatilityfoundation/volatility3-symbols` repo. If the exact kernel build in the banner isn't installable via `apt` (superseded version), pull the matching `linux-image-<ver>-dbg`/`-dbgsym` **.deb directly from the distro's snapshot archive** by exact version (Debian: `snapshot.debian.org/mr/binary/<pkg>/<version>/binfiles` → `snapshot.debian.org/file/<hash>`; Ubuntu: `launchpad.net`/`ddebs.ubuntu.com`), `ar x` it, `tar xf data.tar.*` to get `usr/lib/debug/boot/vmlinux-<ver>`, then `dwarf2json linux --elf vmlinux-<ver> > custom.json`, `xz` it and drop into `<vol_pkg>/symbols/linux/`. This works even for an obscure/old point release with zero pre-built ISF coverage.
 - **`crit`** (CRIU) — MISSING. `crit show pages-1.img`/`crit x <dir> ps`. Install `pip install crit` (part of `criu`). For the container object graph hand off to `linux-container-cloud`; raw page carving here needs only Python.
 - `python3` with `pycryptodome` is MISSING (used for XTS/PBKDF2 validation) — `uv pip install pycryptodome` into a throwaway venv, or use `openssl`/`cryptsetup` to validate.
 
@@ -118,6 +118,26 @@ vol -f mem.lime linux.ip.Addr ; vol -f mem.lime linux.kmsg
 # Community plugin: GPG symmetric passphrase in RAM
 vol -f mem.lime linux.gpg_full.GPGItem      # then: gpg --batch --passphrase <recovered> -d file.gpg
 ```
+
+### Phase 5b — a process is still alive at capture time
+Check `linux.psscan`/`linux.pslist` for anything not `EXIT_DEAD` before assuming every actor has already
+exited. A double-forked/daemonized process (reparented to PID 1 or a `systemd --user` PID) that's now
+blocked in `nanosleep`/`pause`/`read` is common in "the tool ran and now just sits there" scenarios —
+`linux.pscallstack --pid <p>` shows the sleeping syscall directly. A **live** process is worth far more
+than a dead one: its page tables are intact, so you can pull pages that page-cache-only recovery misses
+entirely (COW-private pages a process wrote into its own `.data`/heap never get written back to the
+file, so `linux.pagecache.InodePages` on the executable's inode shows them as all-zero, while the
+process's own address space still has the real bytes).
+```bash
+vol -f mem.lime linux.psscan | grep -v EXIT_DEAD          # who's still running/sleeping
+vol -f mem.lime linux.pscallstack --pid <pid>              # confirm it's parked (nanosleep/read/pause)
+vol -f mem.lime linux.proc.Maps --pid <pid>                 # full VMA list: code/heap/stack + anything mmap'd
+vol -f mem.lime linux.proc.Maps --pid <pid> --dump          # dump every VMA (heap/stack/rw data first)
+strings -n 4 pid.<pid>.vma.*.dmp | grep -iE 'key|iv=|pass|secret'   # env-var-style debug leftovers
+```
+Also check what's `mmap`'d — a process that mapped its **target file** (e.g. the one it's about to
+overwrite) read-only shows up in the same `proc.Maps` listing with the real inode/path, letting you pull
+the exact bytes it's operating on straight out of that VMA instead of chasing the page cache.
 
 ### Phase 6 — Secrets that only live in process memory
 The theme: an app holds a plaintext password/passphrase in its heap. Anchor the search on a **stable nearby string** and grep both ASCII and UTF-16.
@@ -201,6 +221,9 @@ PostgreSQL page structure (to recover a tuple, not just string-match): 8K page, 
 - Capture time itself is often an answer — `windows.info` SystemTime / `linux.boottime` (convert tz).
 - `strings -el` (UTF-16LE) before anything heavy; Windows secrets are widechar. Also plain `strings | grep -i flag`.
 - Hidden/terminated process only in `psscan` (not `pslist`) — diff them.
+- The inverse also pays off: a process still `TASK_RUNNING`/sleeping (not `EXIT_DEAD`) at capture time has
+  a live address space — pull its heap/stack/mmap'd files via `linux.proc.Maps --dump` for secrets that
+  never made it back to disk (see Phase 5b). Don't assume every actor already exited.
 - Injected code: RWX VAD with an `MZ` header via `windows.malware.malfind`.
 - `windows.cmdline` for base64/`-enc` PowerShell; decode it.
 - Sockets to attacker infra in `windows.netscan` (owner PID → dump that process).
@@ -221,6 +244,14 @@ PostgreSQL page structure (to recover a tuple, not just string-match): 8K page, 
 - Mount recovered filesystems `-o ro,noload`/`norecovery` — journal replay mutates evidence.
 - `cmdscan`/`consoles`/`clipboard` are version-flaky on modern Windows — dump the process and grep instead.
 - SystemTime and all vol timestamps are UTC. Convert to the challenge timezone before answering.
+- A page-cache dump of an executable/file (`linux.pagecache.InodePages`) can look mostly zero-filled even
+  when the binary ran fine — pages that were never faulted in (unused library code paths) are legitimately
+  absent, not corrupted. Don't burn time trying to "repair" it; if the process is still alive, dump its
+  actual address space instead (Phase 5b) for a far more complete/accurate copy of what's really resident.
+- A hardcoded/logged key or IV rarely survives as a clean, single obvious string — a debug `KEY=`/`IV=`
+  style leftover in one COW page is a real find even if its counterpart was already scrubbed; keep
+  searching the *rest* of the live process's memory (other VMAs, not just where the first hit was) before
+  concluding the second half is unrecoverable.
 
 ## Worked precedents
 - **KDFC2026 #151 Pull the Plug** — LUKS2 AES-XTS volume key recovered from a VMware `.vmem` with `aeskeyfind`, ordered key-half pair validated against the LUKS2 PBKDF2-SHA256 digest; do NOT boot the VM. See.
@@ -228,6 +259,13 @@ PostgreSQL page structure (to recover a tuple, not just string-match): 8K page, 
 - **KDFC2023 #306 Coin Chaser** — Exodus wallet unlock password recovered in cleartext from process memory, anchored on the `app.asar/.../wallet.html` path string (password was Hangul-IME gibberish). See.
 - **KDFC2023 #252 Password Stealer** — KeePass master key leaked from a memory dump via CVE-2023-32784 (missing first char), brute-forced to full key. See.
 - **KDFC2026 #201 (raw carving portion)** — C2 address and ransom note carved from a CRIU PostgreSQL `pages-1.img` as base64 / HeapTuple structures. See.
+- **Ransomware tool still daemonized at capture time** — a "the file was just encrypted" scenario where the
+  encryptor had double-forked and was found parked in `clock_nanosleep` (`psscan` showed it `TASK_RUNNING`,
+  reparented off PID 1). No matching kernel ISF existed pre-built, so one was built from a distro snapshot
+  archive's exact-version dbgsym package (see Tools). `linux.proc.Maps --dump` on the live PID recovered a
+  plaintext `AES_IV=<hex>` string sitting in a COW-private page of its own `.data` segment — a page that
+  page-cache-based recovery of the same binary showed as all-zero. The paired key was never found in any
+  captured page (likely zeroized after use), leaving the IV as a partial, still-valuable result.
 
 ## References
 - `../../knowledge/web-dfir-sources.md` §2 (Volatility 3 cheat sheets, Linux ISF/dwarf2json, GPG-in-RAM, malware namespace) and §9 (flag-hiding patterns #11–#14).
