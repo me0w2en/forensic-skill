@@ -7,8 +7,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
   <a href="https://github.com/me0w2en/forensic-skill/actions/workflows/ci.yml"><img src="https://github.com/me0w2en/forensic-skill/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/skills-12-blue.svg" alt="12 skills">
-  <img src="https://img.shields.io/badge/routing%20tests-43%20passing-brightgreen.svg" alt="43 routing tests">
+  <img src="https://img.shields.io/badge/skills-13-blue.svg" alt="13 skills">
+  <img src="https://img.shields.io/badge/routing%20tests-46%20passing-brightgreen.svg" alt="46 routing tests">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg" alt="platform">
 </p>
 
@@ -26,7 +26,7 @@
 
 **forensic-skill**은 디지털 포렌식 CTF와 인가된 DFIR을 위한 클라이언트 중립 에이전트 스킬 팩입니다.
 어떤 AI 코딩 에이전트(Claude Code, Cursor, Cline, OpenCode, Codex CLI 등)든 이 저장소를 물리면, 아티팩트를
-받아 유형을 식별하고 올바른 처리 규칙(해시 검증, 읽기 전용 작업, 답변 타임존 기록)을 강제한 뒤 12개의 전문
+받아 유형을 식별하고 올바른 처리 규칙(해시 검증, 읽기 전용 작업, 답변 타임존 기록)을 강제한 뒤 13개의 전문
 스킬 중 하나로 안내합니다. 각 스킬은 바로 실행 가능한 명령, 플래그 은닉 체크리스트, 함정을 담은 밀도 높은
 플레이북입니다.
 
@@ -144,6 +144,7 @@ tool-index.md  머신별 생성물 (git 제외)
 | `windows-artifacts` | EVTX/레지스트리/Prefetch/Amcache/SRUM/$MFT 실행·지속성·측면이동 |
 | `linux-container-cloud` | Docker/OCI, K8s/CRIU 체크포인트, AWS/Workspace 로그, 리눅스 서버 로그 |
 | `mobile-artifacts` | Android/iOS, 앱 SQLite(+WAL), 브라우저·AI앱 캐시, MediaStore |
+| `email-clients` | Outlook OST/PST·Thunderbird mbox·EML/MSG: 계정, 협박메일, 첨부파일 |
 | `multimedia-stego` | 이미지/오디오/영상 스테가노그래피, 컨테이너 복구, 스펙트로그램, OCR, 위치추정 |
 | `file-format-carving` | 알 수 없는/손상 파일, 아카이브, OOXML/HWP/PDF, 위장 PE (폴백) |
 | `anti-forensics-timeline` | 슈퍼 타임라인, 타임스톰핑, 와이퍼, 로그 삭제, 에폭 변환 |

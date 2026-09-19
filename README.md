@@ -7,8 +7,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
   <a href="https://github.com/me0w2en/forensic-skill/actions/workflows/ci.yml"><img src="https://github.com/me0w2en/forensic-skill/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/skills-12-blue.svg" alt="12 skills">
-  <img src="https://img.shields.io/badge/routing%20tests-43%20passing-brightgreen.svg" alt="43 routing tests">
+  <img src="https://img.shields.io/badge/skills-13-blue.svg" alt="13 skills">
+  <img src="https://img.shields.io/badge/routing%20tests-46%20passing-brightgreen.svg" alt="46 routing tests">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg" alt="platform">
 </p>
 
@@ -27,7 +27,7 @@
 **forensic-skill** is a client-neutral agent-skill pack for digital-forensics CTFs and authorized DFIR.
 Point any AI coding agent (Claude Code, Cursor, Cline, OpenCode, Codex CLI, and others) at this repo. When
 you hand it a forensic artifact and a question, it identifies the artifact type, enforces sound handling
-(verify hashes, work read-only, capture the answer's timezone), and drives one of 12 specialist skills.
+(verify hashes, work read-only, capture the answer's timezone), and drives one of 13 specialist skills.
 Each skill is a dense, runnable playbook with a flag-hiding checklist and pitfalls.
 
 It borrows the "identify, route, specialist skill" pattern from [zhaoxuya520/reverse-skill](https://github.com/zhaoxuya520/reverse-skill)
@@ -144,6 +144,7 @@ tool-index.md  generated per machine (git-ignored)
 | `windows-artifacts` | EVTX/registry/Prefetch/Amcache/SRUM/$MFT execution, persistence, lateral movement |
 | `linux-container-cloud` | Docker/OCI, K8s/CRIU checkpoints, AWS/Workspace logs, Linux server logs |
 | `mobile-artifacts` | Android/iOS, app SQLite (+WAL), browser and AI-app caches, MediaStore |
+| `email-clients` | Outlook OST/PST, Thunderbird mbox, EML/MSG: accounts, extortion mail, attachments |
 | `multimedia-stego` | image/audio/video stego, container repair, spectrograms, OCR, geolocation |
 | `file-format-carving` | unknown/corrupt files, archives, OOXML/HWP/PDF, PE-in-disguise (fallback) |
 | `anti-forensics-timeline` | super-timeline, timestomping, wipers, log clearing, epoch conversion |

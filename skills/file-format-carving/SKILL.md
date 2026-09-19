@@ -96,6 +96,22 @@ zip2john file.zip > h; john --wordlist=rockyou.txt h        # AES-encrypted zip
 bkcrack -C file.zip -c secret.txt -p known_plain.bin
 ```
 
+A zip appended after another file's trailer (PNG `IEND`, JPEG `FFD9`, …) is often truncated —
+the writer stopped after the last central-directory entry and never wrote the End Of Central
+Directory record, so `unzip`/`7z` refuse it ("cannot find zipfile directory"). Rebuild the EOCD
+by hand instead of assuming the archive is corrupt or bogus:
+```python
+import struct
+zdata = data[pk0304_offset:]                       # slice starting at the first "PK\x03\x04"
+cd_start = data.find(b'PK\x01\x02') - pk0304_offset  # first central-directory offset, relative
+cd_size  = len(zdata) - cd_start
+n_entries = zdata.count(b'PK\x01\x02')
+eocd = b'PK\x05\x06' + struct.pack('<HHHHIIH', 0, 0, n_entries, n_entries, cd_size, cd_start, 0)
+open('fixed.zip', 'wb').write(zdata + eocd)
+```
+If `unzip` then reports the entry itself as encrypted (general-purpose flag bit 0 set), that's a
+normal ZipCrypto/AES password gate, not a second corruption — go to password recovery below.
+
 ### Phase 5 — Documents (OOXML / OLE / RTF / HWP / PDF)
 ```bash
 # OOXML is a zip:
@@ -105,6 +121,14 @@ unzip -o doc.docx -d docx_x; ls -R docx_x
 olevba --decode suspect.docm
 oledump.py suspect.doc; oledump.py -s 3 -v suspect.doc      # decompress VBA stream 3
 rtfobj suspect.rtf                                          # embedded objects
+# Orphaned media: cross-check every word/media/* (or ppt/, xl/) file against every
+# .rels that could reference it. A picture/PNG present in the package but absent from
+# ALL relationship files is never rendered by the app and is a prime place to hide a
+# trailer-appended archive or LSB payload (see Phase 4 / multimedia-stego).
+grep -o 'media/[^"]*' word/_rels/document.xml.rels word/_rels/header*.rels word/_rels/footer*.rels 2>/dev/null \
+  | sort -u > referenced.txt
+ls word/media | sort > present.txt
+comm -13 referenced.txt present.txt     # media files nobody points to
 hwp5txt report.hwp                                          # HWP 5.x (OLE) text; HWPX: unzip
 # PDF:
 pdfid.py f.pdf                                              # /JS /OpenAction /Launch /EmbeddedFile /ObjStm counts
@@ -132,10 +156,17 @@ print([e.entry.PdbFileName for e in pe.DIRECTORY_ENTRY_DEBUG if hasattr(e.entry,
 - Fixed-period injected marker inflating chunk sizes (KDFC #202) — strip then carve.
 - Extension lies: `.pptx`/`.png` that is really `MZ`/PE; `movi` box inside an MP4.
 - Archive: filenames visible in encrypted zip; ZipCrypto known-plaintext; empty-password first.
-- OOXML: white/vanished text, `docProps` author/times, unreferenced parts, `vbaProject.bin` macros.
+- OOXML: white/vanished text, `docProps` author/times, unreferenced parts (Phase 5), `vbaProject.bin`
+  macros, and hand-inserted `customXml/itemN.xml` parts with no matching `itemPropsN.xml`/`.rels` —
+  a real Office feature always registers both; an orphan custom-XML part (fake "classification"/
+  "keyWrap"/"metadata" tags) is author-planted and worth decoding, not dismissing as flavour text.
 - PDF: incremental-update older revisions (`/Prev`), JavaScript/Launch, invisible layers, embedded files.
 - PE provenance: Rich Header + PDB path reveal toolchain/user/build folder (KDFC #103).
-- Layered encodings: hex → base64 → zlib/gzip → XOR; decode iteratively in CyberChef.
+- Layered encodings: hex → base64 → zlib/gzip → XOR → ROT13; decode iteratively in CyberChef or by hand.
+  A base64-shaped string that decodes to non-printable noise is not automatically a decoy — the encoder
+  order may be reversed from what you tried (e.g. ROT13-then-base64: rotate the *encoded* string 13
+  first, THEN base64-decode the result). Before writing any suspicious string off as noise/red herring,
+  try ROT13 (and a single-byte XOR sweep) on it BEFORE base64-decoding, not just after.
 
 ## Pitfalls
 - Repair structure BEFORE running stego/extraction tools — polluted payloads defeat zsteg/steghide.
@@ -143,12 +174,25 @@ print([e.entry.PdbFileName for e in pe.DIRECTORY_ENTRY_DEBUG if hasattr(e.entry,
 - Rich Header XOR key is the 4 bytes AFTER `Rich`; decode with pefile, not by hand.
 - A single H.264 P-frame can't decode alone — that's a media task; hand to multimedia-stego.
 - Java int-array IVs like `{...,9,16,17...}` may be meant as hex bytes `09 10 11` (KDFC #301 trap).
+- Don't sink time into password brute-force (rockyou + rules, alnum exhaustion, themed wordlists) before
+  re-checking every suspicious string in the package for a layered-encoding password hint — an archive
+  password that resists a large wordlist attack is a signal you're missing a decode step, not that you
+  need a bigger wordlist. Exhaust "decode this string differently" before "guess more passwords".
+- A zip that fails to open with "cannot find zipfile directory" is usually just missing its EOCD record
+  (see Phase 4), not a hash-mismatched or intentionally-destroyed archive — try the EOCD rebuild first.
 
 ## Worked precedents
 - **KDFC2023 #103 A suspicious developer** — Rich Header `[ProductID].[BuildID].[Count]` + CodeView PDB path prove build provenance.
 - **KDFC2023 #202 Why is not it playing** — 8-byte marker injected every 0x1000 inflates AVI chunk sizes; strip then carve H.264.
 - **KDFC2023 #303 Audit My Corporation / #253** — a `.pptx`/`.png` that is actually a PE; check `MZ` first.
 - **KDFC2023 #251 Find the suspect** — Dropbox `config.dbx`/SQLite carving for deleted rows.
+- **Unreferenced-media + truncated appended zip + ROT13-wrapped password** — a plain-looking `.docx`
+  hid its payload in a `word/media/*.png` with no relationship reference; the PNG's `IEND` was followed
+  by a zip missing its EOCD (Phase 4 rebuild), the inner entry was ZipCrypto-locked, and the password
+  was hidden as a decoy-looking `customXml` value that only became valid base64 after ROT13. The
+  flag itself was then a further base64 layer inside the decrypted note. Large wordlist/brute-force
+  attacks on the zip password were a dead end by design — the fix was decoding the hint differently,
+  not guessing harder.
 
 ## References
 - `../../references/magic-bytes.md`, `../../references/timestamps.md`
